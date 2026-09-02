@@ -2,10 +2,14 @@ const mediaHost = window.location.hostname;
 const webRtcBase = `http://${mediaHost}:8889`;
 const playbackBase = `http://${mediaHost}:9996`;
 
+// Approved MediaMTX paths currently shown by the viewer.
+// These are intentionally explicit rather than dynamically discovered.
 const sources = ['atem', 'drone'];
 let currentSource = 'atem';
 
-const viewer = document.getElementById('live-viewer');
+const liveViewer = document.getElementById('live-viewer');
+const recordingViewer = document.getElementById('recording-viewer');
+const goLiveButton = document.getElementById('go-live');
 const statusDot = document.getElementById('status-dot');
 const statusText = document.getElementById('status-text');
 const recordingsList = document.getElementById('recordings-list');
@@ -47,9 +51,48 @@ function formatDate(value) {
 	}).format(date);
 }
 
+function buildRecordingUrl(recording, source = currentSource) {
+	const params = new URLSearchParams({
+		path: source,
+		start: recording.start,
+		duration: String(recording.duration),
+		format: 'mp4'
+	});
+
+	return `${playbackBase}/get?${params.toString()}`;
+}
+
 function loadLiveViewer() {
-	setStatus('', 'Loading live stream...');
-	viewer.src = `${webRtcBase}/${encodeURIComponent(currentSource)}?controls=true&muted=false`;
+	recordingViewer.pause();
+	recordingViewer.removeAttribute('src');
+	recordingViewer.load();
+	recordingViewer.hidden = true;
+
+	liveViewer.hidden = false;
+	goLiveButton.hidden = true;
+
+	setStatus('', `Loading ${currentSource.toUpperCase()} live stream...`);
+	liveViewer.src = `${webRtcBase}/${encodeURIComponent(currentSource)}?controls=true&muted=false`;
+}
+
+async function playRecording(recording) {
+	const source = currentSource;
+	const recordingUrl = buildRecordingUrl(recording, source);
+
+	liveViewer.hidden = true;
+	recordingViewer.hidden = false;
+	goLiveButton.hidden = false;
+
+	recordingViewer.src = recordingUrl;
+	recordingViewer.load();
+
+	setStatus('recorded', `${source.toUpperCase()} recording - ${formatDate(recording.start)}`);
+
+	try {
+		await recordingViewer.play();
+	} catch (error) {
+		// The recording is still loaded and can be started with the player's Play control.
+	}
 }
 
 async function loadRecordings() {
@@ -59,6 +102,11 @@ async function loadRecordings() {
 		const response = await fetch(`${playbackBase}/list?path=${encodeURIComponent(currentSource)}`, {
 			cache: 'no-store'
 		});
+
+		if (response.status === 400 || response.status === 404) {
+			recordingsList.innerHTML = '<p class="empty-state">No recordings are available for this source.</p>';
+			return;
+		}
 
 		if (!response.ok) {
 			throw new Error(`Playback API returned ${response.status}`);
@@ -88,23 +136,14 @@ async function loadRecordings() {
 			duration.className = 'recording-duration';
 			duration.textContent = formatDuration(recording.duration);
 
-			const download = document.createElement('a');
-			download.className = 'recording-link';
-			download.textContent = 'Open MP4';
-			download.target = '_blank';
-			download.rel = 'noopener';
-
-			const params = new URLSearchParams({
-				path: currentSource,
-				start: recording.start,
-				duration: String(recording.duration),
-				format: 'mp4'
-			});
-
-			download.href = `${playbackBase}/get?${params.toString()}`;
+			const playButton = document.createElement('button');
+			playButton.className = 'recording-link';
+			playButton.type = 'button';
+			playButton.textContent = 'Play';
+			playButton.addEventListener('click', () => playRecording(recording));
 
 			meta.append(time, duration);
-			row.append(meta, download);
+			row.append(meta, playButton);
 			recordingsList.append(row);
 		});
 	} catch (error) {
@@ -132,9 +171,14 @@ sourceButtons.forEach(button => {
 });
 
 refreshButton.addEventListener('click', loadRecordings);
+goLiveButton.addEventListener('click', loadLiveViewer);
 
-viewer.addEventListener('load', () => {
-	setStatus('online', `${currentSource.toUpperCase()} viewer loaded`);
+liveViewer.addEventListener('load', () => {
+	setStatus('online', `${currentSource.toUpperCase()} live viewer loaded`);
+});
+
+recordingViewer.addEventListener('error', () => {
+	setStatus('offline', `Could not play ${currentSource.toUpperCase()} recording`);
 });
 
 selectSource(currentSource);
