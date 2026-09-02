@@ -1,6 +1,5 @@
 const mediaHost = window.location.hostname;
 const webRtcBase = `http://${mediaHost}:8889`;
-const playbackBase = `http://${mediaHost}:9996`;
 
 // Approved MediaMTX paths currently shown by the viewer.
 // These are intentionally explicit rather than dynamically discovered.
@@ -38,6 +37,24 @@ function formatDuration(seconds) {
 	return `${secs}s`;
 }
 
+function formatFileSize(bytes) {
+	const size = Number(bytes) || 0;
+
+	if (size >= 1024 ** 3) {
+		return `${(size / 1024 ** 3).toFixed(2)} GB`;
+	}
+
+	if (size >= 1024 ** 2) {
+		return `${(size / 1024 ** 2).toFixed(1)} MB`;
+	}
+
+	if (size >= 1024) {
+		return `${(size / 1024).toFixed(1)} KB`;
+	}
+
+	return `${size} B`;
+}
+
 function formatDate(value) {
 	const date = new Date(value);
 
@@ -52,14 +69,7 @@ function formatDate(value) {
 }
 
 function buildRecordingUrl(recording, source = currentSource) {
-	const params = new URLSearchParams({
-		path: source,
-		start: recording.start,
-		duration: String(recording.duration),
-		format: 'mp4'
-	});
-
-	return `${playbackBase}/get?${params.toString()}`;
+	return `/recordings/${encodeURIComponent(source)}/${encodeURIComponent(recording.name)}`;
 }
 
 function loadLiveViewer() {
@@ -91,7 +101,7 @@ async function playRecording(recording) {
 	try {
 		await recordingViewer.play();
 	} catch (error) {
-		// The recording is still loaded and can be started with the player's Play control.
+		// The recording is loaded and can be started with the player's Play control.
 	}
 }
 
@@ -99,17 +109,12 @@ async function loadRecordings() {
 	recordingsList.innerHTML = '<p class="empty-state">Loading recordings...</p>';
 
 	try {
-		const response = await fetch(`${playbackBase}/list?path=${encodeURIComponent(currentSource)}`, {
+		const response = await fetch(`/api/recordings?source=${encodeURIComponent(currentSource)}`, {
 			cache: 'no-store'
 		});
 
-		if (response.status === 400 || response.status === 404) {
-			recordingsList.innerHTML = '<p class="empty-state">No recordings are available for this source.</p>';
-			return;
-		}
-
 		if (!response.ok) {
-			throw new Error(`Playback API returned ${response.status}`);
+			throw new Error(`Recording API returned ${response.status}`);
 		}
 
 		const recordings = await response.json();
@@ -121,7 +126,7 @@ async function loadRecordings() {
 
 		recordingsList.innerHTML = '';
 
-		[...recordings].reverse().forEach(recording => {
+		recordings.forEach(recording => {
 			const row = document.createElement('div');
 			row.className = 'recording-row';
 
@@ -132,17 +137,28 @@ async function loadRecordings() {
 			time.className = 'recording-time';
 			time.textContent = formatDate(recording.start);
 
-			const duration = document.createElement('span');
-			duration.className = 'recording-duration';
-			duration.textContent = formatDuration(recording.duration);
+			const detail = document.createElement('span');
+			detail.className = 'recording-duration';
+
+			if (recording.active) {
+				detail.textContent = `Recording now · ${formatFileSize(recording.size)}`;
+			} else {
+				detail.textContent = `${formatDuration(recording.duration)} · ${formatFileSize(recording.size)}`;
+			}
 
 			const playButton = document.createElement('button');
 			playButton.className = 'recording-link';
 			playButton.type = 'button';
-			playButton.textContent = 'Play';
-			playButton.addEventListener('click', () => playRecording(recording));
 
-			meta.append(time, duration);
+			if (recording.active) {
+				playButton.textContent = 'Recording…';
+				playButton.disabled = true;
+			} else {
+				playButton.textContent = 'Play';
+				playButton.addEventListener('click', () => playRecording(recording));
+			}
+
+			meta.append(time, detail);
 			row.append(meta, playButton);
 			recordingsList.append(row);
 		});
