@@ -158,6 +158,17 @@ h2 {
 	border: 1px solid #2b2d31;
 	border-radius: 8px;
 	background: #121417;
+	transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+
+.recording-row.active {
+	border-color: #d9a441;
+	background: #1b1914;
+	box-shadow: inset 4px 0 0 #d9a441;
+}
+
+.recording-row.active .recording-time {
+	color: #f1d18c;
 }
 
 .recording-meta {
