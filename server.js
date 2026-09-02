@@ -5,9 +5,41 @@ const path = require('path');
 
 const port = process.env.PORT || 8080;
 const publicDir = path.join(__dirname, 'public');
-const streamsDir = path.resolve(__dirname, '..', 'Streams');
 const allowedSources = new Set(['atem', 'drone']);
 const activeFileThresholdMs = 5000;
+
+function findStreamsDirectory() {
+	if (process.env.STREAMS_DIR) {
+		return path.resolve(process.env.STREAMS_DIR);
+	}
+
+	let currentDir = __dirname;
+
+	for (let i = 0; i < 6; i++) {
+		const candidate = path.join(currentDir, 'Streams');
+
+		try {
+			if (fs.statSync(candidate).isDirectory()) {
+				return path.resolve(candidate);
+			}
+		} catch (error) {
+			// Keep walking up until a Streams directory is found.
+		}
+
+		const parentDir = path.dirname(currentDir);
+
+		if (parentDir === currentDir) {
+			break;
+		}
+
+		currentDir = parentDir;
+	}
+
+	// Preserve the original expected layout as a fallback.
+	return path.resolve(__dirname, '..', 'Streams');
+}
+
+const streamsDir = findStreamsDirectory();
 
 const mimeTypes = {
 	'.html': 'text/html; charset=utf-8',
@@ -247,6 +279,31 @@ const server = http.createServer(async (req, res) => {
 			return;
 		}
 
+		if (requestPath === '/api/status') {
+			let streamsDirectoryExists = false;
+			let streamFolders = [];
+
+			try {
+				const stats = await fsp.stat(streamsDir);
+				streamsDirectoryExists = stats.isDirectory();
+
+				if (streamsDirectoryExists) {
+					streamFolders = (await fsp.readdir(streamsDir, { withFileTypes: true }))
+						.filter(entry => entry.isDirectory())
+						.map(entry => entry.name);
+				}
+			} catch (error) {
+				// Status response below will report that the directory was not found.
+			}
+
+			sendJson(res, 200, {
+				streamsDir,
+				streamsDirectoryExists,
+				streamFolders
+			});
+			return;
+		}
+
 		if (requestPath.startsWith('/recordings/')) {
 			const parts = requestPath.split('/').filter(Boolean);
 
@@ -273,5 +330,9 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(port, '0.0.0.0', () => {
 	console.log(`RTMP Web View running on http://0.0.0.0:${port}`);
-	console.log(`Serving recordings from ${streamsDir}`);
+	console.log(`Serving recordings from: ${streamsDir}`);
+
+	if (!fs.existsSync(streamsDir)) {
+		console.warn('WARNING: Streams directory does not currently exist at that path.');
+	}
 });
