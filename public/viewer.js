@@ -5,6 +5,8 @@ const webRtcBase = `http://${mediaHost}:8889`;
 // These are intentionally explicit rather than dynamically discovered.
 const sources = ['atem', 'drone'];
 let currentSource = 'atem';
+let currentMode = 'live';
+let liveLoadArmed = false;
 
 const liveViewer = document.getElementById('live-viewer');
 const recordingViewer = document.getElementById('recording-viewer');
@@ -73,6 +75,8 @@ function buildRecordingUrl(recording, source = currentSource) {
 }
 
 function loadLiveViewer() {
+	currentMode = 'live';
+
 	recordingViewer.pause();
 	recordingViewer.removeAttribute('src');
 	recordingViewer.load();
@@ -81,15 +85,32 @@ function loadLiveViewer() {
 	liveViewer.hidden = false;
 	goLiveButton.hidden = true;
 
-	setStatus('', `Loading ${currentSource.toUpperCase()} live stream...`);
-	liveViewer.src = `${webRtcBase}/${encodeURIComponent(currentSource)}?controls=true&muted=false`;
+	setStatus('', `Connecting to ${currentSource.toUpperCase()} live stream...`);
+
+	// Force the iframe to create a completely fresh MediaMTX WebRTC session.
+	// Merely assigning the same URL again can leave a failed/stale iframe untouched.
+	liveLoadArmed = false;
+	liveViewer.src = 'about:blank';
+
+	setTimeout(() => {
+		if (currentMode !== 'live') {
+			return;
+		}
+
+		liveLoadArmed = true;
+		liveViewer.src = `${webRtcBase}/${encodeURIComponent(currentSource)}?controls=true&muted=false`;
+	}, 50);
 }
 
 async function playRecording(recording) {
 	const source = currentSource;
 	const recordingUrl = buildRecordingUrl(recording, source);
 
+	currentMode = 'recording';
+	liveLoadArmed = false;
+	liveViewer.src = 'about:blank';
 	liveViewer.hidden = true;
+
 	recordingViewer.hidden = false;
 	goLiveButton.hidden = false;
 
@@ -106,8 +127,6 @@ async function playRecording(recording) {
 }
 
 async function loadRecordings() {
-	recordingsList.innerHTML = '<p class="empty-state">Loading recordings...</p>';
-
 	try {
 		const response = await fetch(`/api/recordings?source=${encodeURIComponent(currentSource)}`, {
 			cache: 'no-store'
@@ -140,20 +159,16 @@ async function loadRecordings() {
 			const detail = document.createElement('span');
 			detail.className = 'recording-duration';
 
-			if (recording.active) {
-				detail.textContent = `Recording now · ${formatFileSize(recording.size)}`;
-			} else {
-				detail.textContent = `${formatDuration(recording.duration)} · ${formatFileSize(recording.size)}`;
-			}
-
 			const playButton = document.createElement('button');
 			playButton.className = 'recording-link';
 			playButton.type = 'button';
 
 			if (recording.active) {
-				playButton.textContent = 'Recording…';
-				playButton.disabled = true;
+				detail.textContent = `Recording now · ${formatFileSize(recording.size)}`;
+				playButton.textContent = 'Watch Live';
+				playButton.addEventListener('click', loadLiveViewer);
 			} else {
+				detail.textContent = `${formatDuration(recording.duration)} · ${formatFileSize(recording.size)}`;
 				playButton.textContent = 'Play';
 				playButton.addEventListener('click', () => playRecording(recording));
 			}
@@ -186,15 +201,28 @@ sourceButtons.forEach(button => {
 	button.addEventListener('click', () => selectSource(button.dataset.source));
 });
 
-refreshButton.addEventListener('click', loadRecordings);
+refreshButton.addEventListener('click', () => {
+	recordingsList.innerHTML = '<p class="empty-state">Loading recordings...</p>';
+	loadRecordings();
+});
+
 goLiveButton.addEventListener('click', loadLiveViewer);
 
 liveViewer.addEventListener('load', () => {
+	if (!liveLoadArmed || currentMode !== 'live') {
+		return;
+	}
+
 	setStatus('online', `${currentSource.toUpperCase()} live viewer loaded`);
 });
 
 recordingViewer.addEventListener('error', () => {
-	setStatus('offline', `Could not play ${currentSource.toUpperCase()} recording`);
+	if (currentMode === 'recording') {
+		setStatus('offline', `Could not play ${currentSource.toUpperCase()} recording`);
+	}
 });
+
+// Keep file sizes and newly completed recording segments reasonably current.
+setInterval(loadRecordings, 5000);
 
 selectSource(currentSource);
