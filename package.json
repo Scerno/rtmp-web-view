@@ -1,0 +1,9 @@
+{
+  "name": "rtmp-web-view",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lightweight internal MediaMTX viewer",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
