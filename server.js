@@ -279,31 +279,6 @@ const server = http.createServer(async (req, res) => {
 			return;
 		}
 
-		if (requestPath === '/api/status') {
-			let streamsDirectoryExists = false;
-			let streamFolders = [];
-
-			try {
-				const stats = await fsp.stat(streamsDir);
-				streamsDirectoryExists = stats.isDirectory();
-
-				if (streamsDirectoryExists) {
-					streamFolders = (await fsp.readdir(streamsDir, { withFileTypes: true }))
-						.filter(entry => entry.isDirectory())
-						.map(entry => entry.name);
-				}
-			} catch (error) {
-				// Status response below will report that the directory was not found.
-			}
-
-			sendJson(res, 200, {
-				streamsDir,
-				streamsDirectoryExists,
-				streamFolders
-			});
-			return;
-		}
-
 		if (requestPath.startsWith('/recordings/')) {
 			const parts = requestPath.split('/').filter(Boolean);
 
