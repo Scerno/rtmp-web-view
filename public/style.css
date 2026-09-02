@@ -1,0 +1,180 @@
+* {
+	box-sizing: border-box;
+}
+
+:root {
+	font-family: Arial, Helvetica, sans-serif;
+	color: #f4f4f5;
+	background: #111214;
+}
+
+body {
+	margin: 0;
+	background: #111214;
+}
+
+button {
+	font: inherit;
+}
+
+.app-shell {
+	width: min(1200px, calc(100% - 32px));
+	margin: 0 auto;
+	padding: 24px 0 40px;
+}
+
+.topbar,
+.section-heading {
+	display: flex;
+	align-items: centre;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+h1,
+h2,
+p {
+	margin-top: 0;
+}
+
+h1 {
+	margin-bottom: 4px;
+	font-size: 28px;
+}
+
+h2 {
+	margin-bottom: 4px;
+	font-size: 20px;
+}
+
+.subtitle,
+.section-heading p,
+.empty-state {
+	margin-bottom: 0;
+	color: #a7a9ad;
+}
+
+.source-picker {
+	display: flex;
+	gap: 8px;
+}
+
+.source-button,
+.secondary-button,
+.recording-link {
+	border: 1px solid #34363b;
+	border-radius: 8px;
+	background: #1b1d21;
+	color: #f4f4f5;
+	padding: 10px 14px;
+	cursor: pointer;
+	text-decoration: none;
+}
+
+.source-button.active {
+	background: #f4f4f5;
+	color: #111214;
+	border-color: #f4f4f5;
+}
+
+.status-row {
+	display: flex;
+	align-items: centre;
+	gap: 8px;
+	margin: 18px 0 10px;
+	font-size: 14px;
+	color: #c8c9cc;
+}
+
+.status-dot {
+	width: 9px;
+	height: 9px;
+	border-radius: 999px;
+	background: #676a70;
+}
+
+.status-dot.online {
+	background: #58c27d;
+}
+
+.status-dot.offline {
+	background: #d45c5c;
+}
+
+.viewer-card,
+.recordings-card {
+	border: 1px solid #2b2d31;
+	border-radius: 12px;
+	background: #17191c;
+	overflow: hidden;
+}
+
+.viewer-card {
+	aspect-ratio: 16 / 9;
+	background: #000;
+}
+
+#live-viewer {
+	width: 100%;
+	height: 100%;
+	border: 0;
+	background: #000;
+}
+
+.recordings-card {
+	margin-top: 20px;
+	padding: 18px;
+}
+
+.recordings-list {
+	margin-top: 16px;
+	display: grid;
+	gap: 10px;
+}
+
+.recording-row {
+	display: flex;
+	align-items: centre;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 12px;
+	border: 1px solid #2b2d31;
+	border-radius: 8px;
+	background: #121417;
+}
+
+.recording-meta {
+	display: grid;
+	gap: 3px;
+}
+
+.recording-time {
+	font-weight: 700;
+}
+
+.recording-duration {
+	font-size: 13px;
+	color: #a7a9ad;
+}
+
+@media (max-width: 700px) {
+	.app-shell {
+		width: min(100% - 20px, 1200px);
+		padding-top: 14px;
+	}
+
+	.topbar,
+	.section-heading,
+	.recording-row {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.source-picker {
+		width: 100%;
+	}
+
+	.source-button {
+		flex: 1;
+	}
+}
