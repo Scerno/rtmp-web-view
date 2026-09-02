@@ -6,8 +6,10 @@ const webRtcBase = `http://${mediaHost}:8889`;
 const sources = ['atem', 'drone'];
 let currentSource = 'atem';
 let currentMode = 'live';
+let currentRecordingName = null;
 let liveLoadArmed = false;
 
+const viewerTitle = document.getElementById('viewer-title');
 const liveViewer = document.getElementById('live-viewer');
 const recordingViewer = document.getElementById('recording-viewer');
 const goLiveButton = document.getElementById('go-live');
@@ -20,6 +22,11 @@ const sourceButtons = [...document.querySelectorAll('.source-button')];
 function setStatus(state, text) {
 	statusDot.className = `status-dot ${state}`;
 	statusText.textContent = text;
+}
+
+function setViewerTitle(text) {
+	viewerTitle.textContent = text;
+	document.title = text;
 }
 
 function formatDuration(seconds) {
@@ -70,6 +77,24 @@ function formatDate(value) {
 	}).format(date);
 }
 
+function formatTitleDate(value) {
+	const date = new Date(value);
+
+	if (Number.isNaN(date.getTime())) {
+		return value;
+	}
+
+	return new Intl.DateTimeFormat('en-GB', {
+		day: '2-digit',
+		month: '2-digit',
+		year: '2-digit',
+		hour: '2-digit',
+		minute: '2-digit',
+		second: '2-digit',
+		hour12: false
+	}).format(date).replace(',', '');
+}
+
 function buildRecordingUrl(recording, source = currentSource) {
 	const url = `/recordings/${encodeURIComponent(source)}/${encodeURIComponent(recording.name)}`;
 
@@ -84,6 +109,7 @@ function buildRecordingUrl(recording, source = currentSource) {
 
 function loadLiveViewer() {
 	currentMode = 'live';
+	currentRecordingName = null;
 
 	recordingViewer.pause();
 	recordingViewer.removeAttribute('src');
@@ -93,7 +119,13 @@ function loadLiveViewer() {
 	liveViewer.hidden = false;
 	goLiveButton.hidden = true;
 
+	setViewerTitle(`Video Streams - ${currentSource.toUpperCase()} Live View`);
 	setStatus('', `Connecting to ${currentSource.toUpperCase()} live stream...`);
+
+	// Remove any selected-recording highlight immediately.
+	document.querySelectorAll('.recording-row.active').forEach(row => {
+		row.classList.remove('active');
+	});
 
 	// Force the iframe to create a completely fresh MediaMTX WebRTC session.
 	// Merely assigning the same URL again can leave a failed/stale iframe untouched.
@@ -115,6 +147,7 @@ async function playRecording(recording) {
 	const recordingUrl = buildRecordingUrl(recording, source);
 
 	currentMode = 'recording';
+	currentRecordingName = recording.name;
 	liveLoadArmed = false;
 	liveViewer.src = 'about:blank';
 	liveViewer.hidden = true;
@@ -125,11 +158,18 @@ async function playRecording(recording) {
 	recordingViewer.src = recordingUrl;
 	recordingViewer.load();
 
+	setViewerTitle(`Video Streams - ${source.toUpperCase()} Recording: ${formatTitleDate(recording.start)}`);
+
 	if (recording.active) {
 		setStatus('recorded', `${source.toUpperCase()} recording in progress - ${formatDate(recording.start)}`);
 	} else {
 		setStatus('recorded', `${source.toUpperCase()} recording - ${formatDate(recording.start)}`);
 	}
+
+	// Apply the highlight immediately without waiting for the next list refresh.
+	document.querySelectorAll('.recording-row').forEach(row => {
+		row.classList.toggle('active', row.dataset.recordingName === currentRecordingName);
+	});
 
 	try {
 		await recordingViewer.play();
@@ -160,6 +200,11 @@ async function loadRecordings() {
 		recordings.forEach(recording => {
 			const row = document.createElement('div');
 			row.className = 'recording-row';
+			row.dataset.recordingName = recording.name;
+
+			if (currentMode === 'recording' && recording.name === currentRecordingName) {
+				row.classList.add('active');
+			}
 
 			const meta = document.createElement('div');
 			meta.className = 'recording-meta';
@@ -177,11 +222,11 @@ async function loadRecordings() {
 
 			if (recording.active) {
 				detail.textContent = `Recording now · ${formatFileSize(recording.size)}`;
-				playButton.textContent = 'Review Recording';
+				playButton.textContent = recording.name === currentRecordingName ? 'Reload Recording' : 'Review Recording';
 				playButton.addEventListener('click', () => playRecording(recording));
 			} else {
 				detail.textContent = `${formatDuration(recording.duration)} · ${formatFileSize(recording.size)}`;
-				playButton.textContent = 'Play';
+				playButton.textContent = recording.name === currentRecordingName ? 'Playing' : 'Play';
 				playButton.addEventListener('click', () => playRecording(recording));
 			}
 
