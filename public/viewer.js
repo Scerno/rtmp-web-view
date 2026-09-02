@@ -71,7 +71,15 @@ function formatDate(value) {
 }
 
 function buildRecordingUrl(recording, source = currentSource) {
-	return `/recordings/${encodeURIComponent(source)}/${encodeURIComponent(recording.name)}`;
+	const url = `/recordings/${encodeURIComponent(source)}/${encodeURIComponent(recording.name)}`;
+
+	// An active file is continually changing. Give each explicit reload a unique
+	// URL so the browser always asks Node for the current file size/metadata.
+	if (recording.active) {
+		return `${url}?v=${encodeURIComponent(recording.modified || Date.now())}`;
+	}
+
+	return url;
 }
 
 function loadLiveViewer() {
@@ -117,7 +125,11 @@ async function playRecording(recording) {
 	recordingViewer.src = recordingUrl;
 	recordingViewer.load();
 
-	setStatus('recorded', `${source.toUpperCase()} recording - ${formatDate(recording.start)}`);
+	if (recording.active) {
+		setStatus('recorded', `${source.toUpperCase()} recording in progress - ${formatDate(recording.start)}`);
+	} else {
+		setStatus('recorded', `${source.toUpperCase()} recording - ${formatDate(recording.start)}`);
+	}
 
 	try {
 		await recordingViewer.play();
@@ -165,8 +177,8 @@ async function loadRecordings() {
 
 			if (recording.active) {
 				detail.textContent = `Recording now · ${formatFileSize(recording.size)}`;
-				playButton.textContent = 'Watch Live';
-				playButton.addEventListener('click', loadLiveViewer);
+				playButton.textContent = 'Review Recording';
+				playButton.addEventListener('click', () => playRecording(recording));
 			} else {
 				detail.textContent = `${formatDuration(recording.duration)} · ${formatFileSize(recording.size)}`;
 				playButton.textContent = 'Play';
