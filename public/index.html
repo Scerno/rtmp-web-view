@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>RTMP Web View</title>
+	<link rel="stylesheet" href="style.css">
+</head>
+<body>
+	<main class="app-shell">
+		<header class="topbar">
+			<div>
+				<h1>Live Video</h1>
+				<p class="subtitle">Internal MediaMTX viewer</p>
+			</div>
+			<div class="source-picker" role="group" aria-label="Video source">
+				<button class="source-button active" data-source="atem">ATEM</button>
+				<button class="source-button" data-source="drone">Drone</button>
+			</div>
+		</header>
+
+		<section class="status-row">
+			<span id="status-dot" class="status-dot"></span>
+			<span id="status-text">Checking stream...</span>
+		</section>
+
+		<section class="viewer-card">
+			<iframe
+				id="live-viewer"
+				title="Live video stream"
+				allow="autoplay; fullscreen; picture-in-picture"
+				allowfullscreen>
+			</iframe>
+		</section>
+
+		<section class="recordings-card">
+			<div class="section-heading">
+				<div>
+					<h2>Recordings</h2>
+					<p>Available recorded periods for the selected source.</p>
+				</div>
+				<button id="refresh-recordings" class="secondary-button">Refresh</button>
+			</div>
+			<div id="recordings-list" class="recordings-list">
+				<p class="empty-state">Loading recordings...</p>
+			</div>
+		</section>
+	</main>
+
+	<script src="viewer.js"></script>
+</body>
+</html>
