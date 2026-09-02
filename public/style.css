@@ -80,10 +80,17 @@ h2 {
 .status-row {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	justify-content: space-between;
+	gap: 16px;
 	margin: 18px 0 10px;
 	font-size: 14px;
 	color: #c8c9cc;
+}
+
+.status-info {
+	display: flex;
+	align-items: center;
+	gap: 8px;
 }
 
 .status-dot {
@@ -91,10 +98,15 @@ h2 {
 	height: 9px;
 	border-radius: 999px;
 	background: #676a70;
+	flex: 0 0 auto;
 }
 
 .status-dot.online {
 	background: #58c27d;
+}
+
+.status-dot.recorded {
+	background: #d9a441;
 }
 
 .status-dot.offline {
@@ -114,11 +126,16 @@ h2 {
 	background: #000;
 }
 
-#live-viewer {
+#live-viewer,
+#recording-viewer {
 	width: 100%;
 	height: 100%;
 	border: 0;
 	background: #000;
+}
+
+#recording-viewer {
+	object-fit: contain;
 }
 
 .recordings-card {
