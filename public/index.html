@@ -20,8 +20,11 @@
 		</header>
 
 		<section class="status-row">
-			<span id="status-dot" class="status-dot"></span>
-			<span id="status-text">Checking stream...</span>
+			<div class="status-info">
+				<span id="status-dot" class="status-dot"></span>
+				<span id="status-text">Checking stream...</span>
+			</div>
+			<button id="go-live" class="secondary-button" type="button" hidden>Go Live</button>
 		</section>
 
 		<section class="viewer-card">
@@ -31,6 +34,13 @@
 				allow="autoplay; fullscreen; picture-in-picture"
 				allowfullscreen>
 			</iframe>
+			<video
+				id="recording-viewer"
+				controls
+				playsinline
+				preload="metadata"
+				hidden>
+			</video>
 		</section>
 
 		<section class="recordings-card">
@@ -39,7 +49,7 @@
 					<h2>Recordings</h2>
 					<p>Available recorded periods for the selected source.</p>
 				</div>
-				<button id="refresh-recordings" class="secondary-button">Refresh</button>
+				<button id="refresh-recordings" class="secondary-button" type="button">Refresh</button>
 			</div>
 			<div id="recordings-list" class="recordings-list">
 				<p class="empty-state">Loading recordings...</p>
